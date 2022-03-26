@@ -87,6 +87,22 @@ def print_chromosomes_probability(config, population: List[List[int]], out_file:
     out_file.write("chromosome {}: probability of {}".format(i + 1, chromosomes_func_values[i] / total_func_values))
     out_file.write("\n")
 
+def print_selection_intervals(config, population: List[List[int]], out_file: TextIOWrapper):
+  func = config.function
+  a, b, c = func.a, func.b, func.c
+  lb, ub = func.lb, func.ub
+
+  chromosomes_func_values = list(map(lambda ch: quadratic_fn(a, b, c, get_chromosome_value(ch, lb, ub)), population))
+  total_func_values = reduce(lambda acc, crt: acc + crt, chromosomes_func_values)
+  probabilities = list(map(lambda ch: ch / total_func_values, chromosomes_func_values))
+  selection_intervals_points = [0] + list(accumulate(probabilities, lambda x, y: x + y))
+
+  for i in range(0, len(selection_intervals_points) - 1):
+    out_file.write("\t")
+    out_file.write("interval {}: [{}, {})".format(i + 1, selection_intervals_points[i], selection_intervals_points[i + 1]))
+    out_file.write("\n")
+
+
 if __name__ == "__main__":
   out_file = open(OUTPUT_FILE_NAME, "w")
 
@@ -105,3 +121,6 @@ if __name__ == "__main__":
   print_chromosomes_probability(config, initial_pop, out_file)
   out_file.write(SECTION_SEPARATOR)
 
+  out_file.write("3. Selection intervals: \n")
+  print_selection_intervals(config, initial_pop, out_file)
+  out_file.write(SECTION_SEPARATOR)
