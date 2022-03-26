@@ -33,6 +33,27 @@ def read_config(input_file_name) -> SimpleNamespace:
   input_file.close()
   return config
 
+def generate_chromosome(len):
+  chromosome = []
+
+  for _ in range(0, len):
+    gene = round(random.random())
+    chromosome.append(gene)
+  
+  return chromosome
+
+def generate_population(nr_individuals, chromosome_length):
+  population = []
+
+  for i in range(0, nr_individuals):
+    chromosome = generate_chromosome(chromosome_length)
+    population.append(chromosome)
+  
+  return population
+
+def get_chromosome_length(lb, ub, precision):
+  return ceil(log2((ub - lb) * pow(10, precision)))
+
 if __name__ == "__main__":
   out_file = open(OUTPUT_FILE_NAME, "w")
 
@@ -40,3 +61,10 @@ if __name__ == "__main__":
 
   print(config)
   
+  chromosome_length = get_chromosome_length(config.function.lb, config.function.ub, config.precision)
+  initial_pop = generate_population(config.nr_individuals, chromosome_length)
+
+  out_file.write("1. Initial population: \n")
+  print_population(config, initial_pop, out_file)
+  out_file.write(SECTION_SEPARATOR)
+
