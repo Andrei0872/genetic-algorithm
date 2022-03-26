@@ -74,6 +74,19 @@ def print_population(config, population: List[List[int]], out_file: TextIOWrappe
     out_file.write("chromosome {}: x = {}; f = {}".format(i + 1, ch_value, func_value))
     out_file.write("\n")
 
+def print_chromosomes_probability(config, population: List[List[int]], out_file: TextIOWrapper):
+  func = config.function
+  a, b, c = func.a, func.b, func.c
+  lb, ub = func.lb, func.ub
+
+  chromosomes_func_values = list(map(lambda ch: quadratic_fn(a, b, c, get_chromosome_value(ch, lb, ub)), population))
+  total_func_values = reduce(lambda acc, crt: acc + crt, chromosomes_func_values)
+
+  for i in range(0, len(population)):
+    out_file.write("\t")
+    out_file.write("chromosome {}: probability of {}".format(i + 1, chromosomes_func_values[i] / total_func_values))
+    out_file.write("\n")
+
 if __name__ == "__main__":
   out_file = open(OUTPUT_FILE_NAME, "w")
 
@@ -86,5 +99,9 @@ if __name__ == "__main__":
 
   out_file.write("1. Initial population: \n")
   print_population(config, initial_pop, out_file)
+  out_file.write(SECTION_SEPARATOR)
+
+  out_file.write("2. Probability of selection for each chromosome: \n")
+  print_chromosomes_probability(config, initial_pop, out_file)
   out_file.write(SECTION_SEPARATOR)
 
