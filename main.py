@@ -33,6 +33,9 @@ def read_config(input_file_name) -> SimpleNamespace:
   input_file.close()
   return config
 
+def quadratic_fn(a, b, c, x):
+  return a * pow(x, 2) + b * x + c
+
 def generate_chromosome(len):
   chromosome = []
 
@@ -53,6 +56,23 @@ def generate_population(nr_individuals, chromosome_length):
 
 def get_chromosome_length(lb, ub, precision):
   return ceil(log2((ub - lb) * pow(10, precision)))
+
+def get_chromosome_value(ch: List[int], lb, ub):
+  decimal_value = int("".join(list(map(str, ch))), 2)
+
+  return ((ub - lb) * decimal_value) / (pow(2, len(ch)) - 1) + lb
+
+def print_population(config, population: List[List[int]], out_file: TextIOWrapper):
+  func = config.function
+  
+  for i in range(0, len(population)):
+    chromosome = population[i]
+    ch_value = get_chromosome_value(chromosome, func.lb, func.ub)
+    func_value = quadratic_fn(func.a, func.b, func.c, ch_value)
+
+    out_file.write("\t")
+    out_file.write("chromosome {}: x = {}; f = {}".format(i + 1, ch_value, func_value))
+    out_file.write("\n")
 
 if __name__ == "__main__":
   out_file = open(OUTPUT_FILE_NAME, "w")
