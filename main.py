@@ -1,14 +1,21 @@
+from copy import deepcopy
+from enum import Enum
 from functools import reduce
 from io import TextIOWrapper
 from itertools import accumulate
 from math import ceil, log2
 from types import SimpleNamespace
 import random
-from typing import List
+from typing import List, Tuple
 
 INPUT_FILE_NAME = "input.txt"
 OUTPUT_FILE_NAME = "output.txt"
 SECTION_SEPARATOR = "\n" + 50 * "=" + "\n\n"
+
+
+class MutationTypes(Enum):
+  RARE = 1
+  EACH_GENE = 2
 
 def read_config(input_file_name) -> SimpleNamespace:
   input_file = open(input_file_name, "r")
@@ -253,6 +260,62 @@ def perform_crossover(in_crossover: List[Tuple[int, int]], out_crossover: List[T
     result[real_idx] = ch
 
   return result
+
+def perform_mutation(population: List[List[int]], prob_mutation, mutation_type: MutationTypes, out_file: TextIOWrapper = None):
+  ch_len = len(population[0])
+
+  if mutation_type == MutationTypes.RARE:
+    for idx in range(0, len(population)):
+      prob_chromosome = random.uniform(0, 1)
+      
+      if out_file != None:
+        out_file.write("\t")
+        out_file.write("chromosome {}: prob_chromosome = {}".format(idx + 1, prob_chromosome))
+      
+      if prob_chromosome >= prob_mutation:
+        if out_file != None:
+          out_file.write("\n")
+        
+        continue
+      
+      chromosome = population[idx]
+      old_chromosome = chromosome[:]
+      gene_idx = random.randint(0, ch_len - 1)
+      chromosome[gene_idx] = 1 - chromosome[gene_idx]
+
+      if out_file != None:
+        out_file.write(" < {} ===> mutation occurred! {} ---idx = {}---> {}\n".format(prob_mutation, "".join(list(map(str, old_chromosome))), gene_idx, "".join(list(map(str, chromosome)))))
+  elif mutation_type == MutationTypes.EACH_GENE:
+    for idx in range(0, len(population)):
+      chromosome = population[idx]
+      old_chromosome = chromosome[:]
+
+      has_mutation = False
+      # 'current chromosome'
+
+      if out_file != None:
+        out_file.write("\t")
+        out_file.write("chromosome {}:\n".format(idx + 1))
+
+      for gene_idx in range(0, len(chromosome)):
+        prob_gene = random.uniform(0, 1)
+        if prob_gene >= prob_mutation:
+          continue
+        
+        has_mutation = True
+
+        old_gene = chromosome[gene_idx]
+        chromosome[gene_idx] = 1 - chromosome[gene_idx]
+        if out_file != None:
+          out_file.write("\t\tgene {} has changed: {} -> {}\n".format(gene_idx + 1, old_gene, chromosome[gene_idx]))
+
+      if out_file != None:
+        if has_mutation:
+          out_file.write("\t\tfinal chromosome: {} -> {}\n\n".format("".join(list(map(str, old_chromosome))), "".join(list(map(str, chromosome)))))
+        else:
+          out_file.write("\tnothing changed\n\n")
+  
+  return population
 
 
 if __name__ == "__main__":
