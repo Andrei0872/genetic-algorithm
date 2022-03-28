@@ -12,6 +12,9 @@ INPUT_FILE_NAME = "input.txt"
 OUTPUT_FILE_NAME = "output.txt"
 SECTION_SEPARATOR = "\n" + 50 * "=" + "\n\n"
 
+def print_if_true(discriminant, fn):
+  if discriminant:
+    fn()
 
 class MutationTypes(Enum):
   RARE = 1
@@ -317,6 +320,21 @@ def perform_mutation(population: List[List[int]], prob_mutation, mutation_type: 
   
   return population
 
+def get_elitist_chromosome(config, population: List[List[int]]):
+  func = config.function
+
+  ch_values = list(map(lambda ch: quadratic_fn(func.a, func.b, func.c, get_chromosome_value(ch, func.lb, func.ub)), population))
+
+  (idx, max_fitness) = reduce(lambda acc, crt: (crt[0] if crt[1] == max(acc[1], crt[1]) else acc[0] , max(acc[1], crt[1])), zip(range(0, len(population)), ch_values))
+
+  return (idx, population[idx], max_fitness)
+
+def get_average_fitness(config, population: List[List[int]]):
+  func = config.function
+
+  ch_values = list(map(lambda ch: quadratic_fn(func.a, func.b, func.c, get_chromosome_value(ch, func.lb, func.ub)), population))
+
+  return (reduce(lambda acc, crt: acc + crt, ch_values)) / len(ch_values)
 
 if __name__ == "__main__":
   out_file = open(OUTPUT_FILE_NAME, "w")
