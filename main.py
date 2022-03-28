@@ -138,6 +138,121 @@ def select_from_population(population: List[List[int]], selection_intervals: Lis
   
   return selected_population
 
+def split_based_on_crossover_prob(selected_population: List[List[int]], prob_crossover, out_file: TextIOWrapper = None) -> Tuple[List[Tuple[int, int]], List[Tuple[int, int]]]:
+  in_crossover = []
+  out_crossover = []
+  
+  for idx in range(0, len(selected_population)):
+    prob_chromosome = random.uniform(0, 1)
+    chromosome = selected_population[idx]
+    
+    if out_file != None:
+      out_file.write("\t")
+      out_file.write("chromosome {}: {}; prob_chromosome = {}".format(idx + 1, "".join(list(map(str, chromosome))), prob_chromosome))
+
+    if prob_chromosome >= prob_crossover:
+      out_crossover.append((idx, chromosome))
+      if out_file != None:
+        out_file.write("\n")
+
+      continue
+    
+    if out_file != None:
+      out_file.write(" < {} ===> selected\n".format(prob_crossover))
+
+    in_crossover.append((idx, chromosome))
+
+  return (in_crossover, out_crossover)
+
+def chromosomes_crossover(ch1: List[int], ch2: List[int], breakpoint) -> Tuple[List[int], List[int]]:
+  after_breakpoint_ch1 = ch1[breakpoint:]
+  after_breakpoint_ch2 = ch2[breakpoint:]
+
+  new_ch1 = ch1[:breakpoint] + after_breakpoint_ch2
+  new_ch2 = ch2[:breakpoint] + after_breakpoint_ch1
+
+  return (new_ch1, new_ch2)
+
+def get_crossover_message(ch1_tuple: Tuple[int, List[int]], ch2_tuple: Tuple[int, List[int]], breakpoint, result1: List[int], result2: List[int]):
+  ch1 = "".join(list(map(str, ch1_tuple[1])))
+  ch2 = "".join(list(map(str, ch2_tuple[1])))
+  result1 = "".join(list(map(str, result1)))
+  
+  if result2 != None:
+    result2 = "".join(list(map(str, result2)))
+
+  ch_len = len(ch1_tuple[1])
+  max_padding_right = len(str(ch_len))
+
+  ch1_msg = f'chromosome {ch1_tuple[0] + 1: <{max_padding_right}}: {ch1}\n'
+  ch2_msg = f'chromosome {ch2_tuple[0] + 1: <{max_padding_right}}: {ch2}\n'
+  delimiter = "-" * ch_len + " breakpoint: {}\n".format(breakpoint)
+  res1_msg = (len(f'chromosome {ch1_tuple[0] + 1: <{max_padding_right}}') + 2) * ' ' + result1 + '\n'
+
+  res2_msg = ''
+  if result2 != None:
+    res2_msg = (len(f'chromosome {ch1_tuple[0] + 1: <{max_padding_right}}') + 2) * ' ' + result2
+
+  return ch1_msg + ch2_msg + delimiter + res1_msg + res2_msg
+
+
+def perform_crossover(in_crossover: List[Tuple[int, int]], out_crossover: List[Tuple[int, int]], out_file: TextIOWrapper = None) -> List[List[int]]:
+  # Taking the first tuple which is of type (index, chromosome).
+  chromosome_length = len(in_crossover[0][1])
+  
+  result = []
+
+  is_special_case = len(in_crossover) == 3
+  if is_special_case:
+    first, second, third = in_crossover
+
+    breakpoint_1 = random.randint(1, chromosome_length - 1)
+    descendant_1 = chromosomes_crossover(first[1], second[1], breakpoint_1)[0]
+    result.append((first[0], descendant_1))
+    
+    breakpoint_2 = random.randint(1, chromosome_length - 1)
+    descendant_2 = chromosomes_crossover(second[1], third[1], breakpoint_2)[0]
+    result.append((second[0], descendant_2))
+
+    breakpoint_3 = random.randint(1, chromosome_length - 1)
+    descendant_3 = chromosomes_crossover(third[1], first[1], breakpoint_3)[0]
+    result.append((third[0], descendant_3))
+
+    if out_file != None:
+      out_file.write(get_crossover_message(first, second, breakpoint_1, descendant_1, None))
+      out_file.write("\n\n")
+
+      out_file.write(get_crossover_message(first, second, breakpoint_2, descendant_2, None))
+      out_file.write("\n\n")
+
+      out_file.write(get_crossover_message(first, second, breakpoint_3, descendant_3, None))
+      out_file.write("\n\n")
+
+  elif len(in_crossover) % 2 == 1:
+    out_crossover.append(in_crossover.pop())
+
+  if is_special_case == False:
+    for idx in range(0, len(in_crossover), 2):
+      ch1_tuple = in_crossover[idx]
+      ch2_tuple = in_crossover[idx + 1]
+      breakpoint = random.randint(1, chromosome_length - 1)
+
+      (new_ch1, new_ch2) = chromosomes_crossover(ch1_tuple[1], ch2_tuple[1], breakpoint)
+      result.append((ch1_tuple[0], new_ch1))
+      result.append((ch2_tuple[0], new_ch2))
+
+      if out_file != None:
+        out_file.write(get_crossover_message(ch1_tuple, ch2_tuple, breakpoint, new_ch1, new_ch2))
+        out_file.write("\n\n")
+  
+  result += out_crossover
+  
+  # Rearranging the items so that they're in order(e.g. from 1 to N).
+  temp_res = [] + result
+  for (real_idx, ch) in temp_res:
+    result[real_idx] = ch
+
+  return result
 
 
 if __name__ == "__main__":
