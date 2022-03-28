@@ -98,9 +98,46 @@ def print_selection_intervals(config, population: List[List[int]], out_file: Tex
   selection_intervals_points = [0] + list(accumulate(probabilities, lambda x, y: x + y))
 
   for i in range(0, len(selection_intervals_points) - 1):
-    out_file.write("\t")
-    out_file.write("interval {}: [{}, {})".format(i + 1, selection_intervals_points[i], selection_intervals_points[i + 1]))
-    out_file.write("\n")
+    selection_intervals.append((selection_intervals_points[i], selection_intervals_points[i + 1]))
+    
+    if out_file != None:
+      out_file.write("\t")
+      out_file.write("interval {}: [{}, {})".format(i + 1, selection_intervals_points[i], selection_intervals_points[i + 1]))
+      out_file.write("\n")
+  
+  return selection_intervals
+
+def find_chromosome_idx_in_interval(intervals: List[Tuple[float, float]], prob_chromosome):
+  start, end = 0, len(intervals) - 1
+
+  while start <= end:
+    mid = (start + end) // 2
+
+    (lb, ub) = intervals[mid]
+    if lb <= prob_chromosome < ub:
+      return mid
+    
+    if prob_chromosome > ub:
+      start = mid + 1
+    elif prob_chromosome < lb:
+      end = mid - 1
+
+def select_from_population(population: List[List[int]], selection_intervals: List[Tuple[float, float]], out_file: TextIOWrapper = None) -> List[List[int]]:
+  selected_population = []
+  
+  for _ in population:
+    prob_chromosome = random.uniform(0, 1)
+    chromosome_idx = find_chromosome_idx_in_interval(selection_intervals, prob_chromosome)
+
+    if out_file != None:
+      out_file.write("\t")
+      out_file.write("prob_chromosome = {}; selecting chromosome {}".format(prob_chromosome, chromosome_idx + 1))
+      out_file.write("\n")
+
+    selected_population.append(deepcopy(population[chromosome_idx]))
+  
+  return selected_population
+
 
 
 if __name__ == "__main__":
