@@ -73,6 +73,9 @@ def get_chromosome_value(ch: List[int], lb, ub):
   return ((ub - lb) * decimal_value) / (pow(2, len(ch)) - 1) + lb
 
 def print_population(config, population: List[List[int]], out_file: TextIOWrapper):
+  if out_file == None:
+    return
+  
   func = config.function
   
   for i in range(0, len(population)):
@@ -81,10 +84,13 @@ def print_population(config, population: List[List[int]], out_file: TextIOWrappe
     func_value = quadratic_fn(func.a, func.b, func.c, ch_value)
 
     out_file.write("\t")
-    out_file.write("chromosome {}: x = {}; f = {}".format(i + 1, ch_value, func_value))
+    out_file.write("chromosome {}: {}; x = {}; f = {}".format(i + 1, "".join(list(map(str, chromosome))), ch_value, func_value))
     out_file.write("\n")
 
 def print_chromosomes_probability(config, population: List[List[int]], out_file: TextIOWrapper):
+  if out_file == None:
+    return
+
   func = config.function
   a, b, c = func.a, func.b, func.c
   lb, ub = func.lb, func.ub
@@ -97,7 +103,7 @@ def print_chromosomes_probability(config, population: List[List[int]], out_file:
     out_file.write("chromosome {}: probability of {}".format(i + 1, chromosomes_func_values[i] / total_func_values))
     out_file.write("\n")
 
-def print_selection_intervals(config, population: List[List[int]], out_file: TextIOWrapper):
+def print_and_get_selection_intervals(config, population: List[List[int]], out_file: TextIOWrapper) -> List[Tuple[float, float]]:
   func = config.function
   a, b, c = func.a, func.b, func.c
   lb, ub = func.lb, func.ub
@@ -107,6 +113,7 @@ def print_selection_intervals(config, population: List[List[int]], out_file: Tex
   probabilities = list(map(lambda ch: ch / total_func_values, chromosomes_func_values))
   selection_intervals_points = [0] + list(accumulate(probabilities, lambda x, y: x + y))
 
+  selection_intervals = []
   for i in range(0, len(selection_intervals_points) - 1):
     selection_intervals.append((selection_intervals_points[i], selection_intervals_points[i + 1]))
     
@@ -343,17 +350,86 @@ if __name__ == "__main__":
 
   print(config)
   
+  raw_mutation_type = int(input("Select the mutation type: \n 1. Rare\n 2. Each gene\n"))
+  if raw_mutation_type == 1:
+    mutation_type = MutationTypes.RARE
+  elif raw_mutation_type == 2:
+    mutation_type = MutationTypes.EACH_GENE
+  else:
+    raise Exception("Either '1' or '2' should be selected!")
+
+  persist_elitist_chromosome = False
+  elitist_chromosome = None
+  raw_elitist_response = input("Should the elitist chromosome persist across generations? (y)es/(n)o\n").lower()
+  if "y" in raw_elitist_response or "yes" in raw_elitist_response:
+    persist_elitist_chromosome = True
+  elif "n" not in raw_elitist_response and "no" not in raw_elitist_response:
+    raise Exception("One of the following is allowed: 'n', 'no', 'y', 'yes' or their uppercase variants.")
+
   chromosome_length = get_chromosome_length(config.function.lb, config.function.ub, config.precision)
   initial_pop = generate_population(config.nr_individuals, chromosome_length)
 
-  out_file.write("1. Initial population: \n")
-  print_population(config, initial_pop, out_file)
-  out_file.write(SECTION_SEPARATOR)
+  nr_iterations = 1
+  while nr_iterations <= config.nr_phases:
 
-  out_file.write("2. Probability of selection for each chromosome: \n")
-  print_chromosomes_probability(config, initial_pop, out_file)
-  out_file.write(SECTION_SEPARATOR)
+    is_first_iteration = nr_iterations == 1
 
-  out_file.write("3. Selection intervals: \n")
-  print_selection_intervals(config, initial_pop, out_file)
-  out_file.write(SECTION_SEPARATOR)
+    if persist_elitist_chromosome == True:
+      elitist_chromosome = get_elitist_chromosome(config, initial_pop)
+    
+    if is_first_iteration == False:
+      out_file.write("\tthe max value is: {}; the average is: {}\n".format(elitist_chromosome[2], get_average_fitness(config, initial_pop)))
+
+    print_if_true(is_first_iteration, lambda: out_file.write("1. Initial population: \n"))
+    print_population(config, initial_pop, out_file if is_first_iteration else None)
+    print_if_true(is_first_iteration, lambda: out_file.write(SECTION_SEPARATOR))
+
+    print_if_true(is_first_iteration, lambda: out_file.write("2. Probability of selection for each chromosome: \n"))
+    print_chromosomes_probability(config, initial_pop, out_file if is_first_iteration else None)
+    print_if_true(is_first_iteration, lambda: out_file.write(SECTION_SEPARATOR))
+
+    print_if_true(is_first_iteration, lambda: out_file.write("3. Selection intervals: \n"))
+    selection_intervals = print_and_get_selection_intervals(config, initial_pop, out_file if is_first_iteration else None)
+    print_if_true(is_first_iteration, lambda: out_file.write(SECTION_SEPARATOR))
+
+    print_if_true(is_first_iteration, lambda: out_file.write("4. The selection process: \n"))
+    selected_population = select_from_population(initial_pop, selection_intervals, out_file if is_first_iteration else None)
+    print_if_true(is_first_iteration, lambda: out_file.write(SECTION_SEPARATOR))
+
+    print_if_true(is_first_iteration, lambda: out_file.write("5. After selection: \n"))
+    print_population(config, selected_population, out_file if is_first_iteration else None)
+    print_if_true(is_first_iteration, lambda: out_file.write(SECTION_SEPARATOR))
+
+    print_if_true(is_first_iteration, lambda: out_file.write("6. Crossover selection: \n"))
+    print_if_true(is_first_iteration, lambda: out_file.write("\tCrossover probability: {}: \n\n".format(config.prob_crossover)))
+    (in_crossover, out_crossover) = split_based_on_crossover_prob(selected_population, config.prob_crossover, out_file if is_first_iteration else None)
+    print_if_true(is_first_iteration, lambda: out_file.write(SECTION_SEPARATOR))
+
+    print_if_true(is_first_iteration, lambda: out_file.write("7. Crossover: \n"))
+    # print(chromosomes_crossover([1,2,3,4,5,6], [10,20,30,40,50,60], 3))
+    population_after_crossover = perform_crossover(in_crossover, out_crossover, out_file if is_first_iteration else None)
+    print_if_true(is_first_iteration, lambda: out_file.write(SECTION_SEPARATOR))
+
+    print_if_true(is_first_iteration, lambda: out_file.write("8. The population after crossover: \n"))
+    print_population(config, population_after_crossover, out_file if is_first_iteration else None)
+    print_if_true(is_first_iteration, lambda: out_file.write(SECTION_SEPARATOR))
+
+    print_if_true(is_first_iteration, lambda: out_file.write("9. Mutation: \n"))
+    print_if_true(is_first_iteration, lambda: out_file.write("\tMutation probability {}: \n\n".format(config.prob_mutation)))
+    population_after_mutation = perform_mutation(population_after_crossover, config.prob_mutation, mutation_type, out_file if is_first_iteration else None)
+    print_if_true(is_first_iteration, lambda: out_file.write(SECTION_SEPARATOR))
+
+    print_if_true(is_first_iteration, lambda: out_file.write("10. The population after mutation: \n"))
+    print_population(config, population_after_mutation, out_file if is_first_iteration else None)
+    print_if_true(is_first_iteration, lambda: out_file.write(SECTION_SEPARATOR))
+
+    if persist_elitist_chromosome == True:
+      population_after_mutation.append(elitist_chromosome[1])
+
+      print_if_true(is_first_iteration, lambda: out_file.write("11. The 'use elitist chromosome' option is active. The population after adding the elitist chromosome: \n"))
+      print_population(config, population_after_mutation, out_file if is_first_iteration else None)
+      print_if_true(is_first_iteration, lambda: out_file.write(SECTION_SEPARATOR))
+
+    nr_iterations += 1
+
+    initial_pop = population_after_mutation
