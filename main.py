@@ -374,9 +374,7 @@ if __name__ == "__main__":
 
     is_first_iteration = nr_iterations == 1
 
-    if persist_elitist_chromosome == True:
-      elitist_chromosome = get_elitist_chromosome(config, initial_pop)
-    
+    elitist_chromosome = get_elitist_chromosome(config, initial_pop)
     if is_first_iteration == False:
       out_file.write("\tthe max value is: {}; the average is: {}\n".format(elitist_chromosome[2], get_average_fitness(config, initial_pop)))
 
