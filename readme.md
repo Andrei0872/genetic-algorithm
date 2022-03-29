@@ -1,5 +1,7 @@
 # Genetic algorithm
 
+[Repository link.](https://github.com/Andrei0872/genetic-algorithm)
+
 ## Prerequisites
 
 * at least Python 3.6(since [f-stings](https://realpython.com/python-f-strings/) have been used throughout the project)
